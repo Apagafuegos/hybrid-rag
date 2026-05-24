@@ -1,0 +1,1 @@
+{"quantization_config":{"scalar":{"type":"int8","always_ram":true}},"vector_parameters":{"dim":1536,"distance_type":"Dot","invert":false,"count":18915}}

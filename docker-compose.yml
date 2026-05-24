@@ -1,0 +1,62 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.18.0
+    container_name: hybrid-rag-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - ./infra/qdrant_config.yaml:/qdrant/config/production.yaml:ro
+    environment:
+      - QDRANT__CONFIG_PATH=/qdrant/config/production.yaml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "perl", "-MIO::Socket::INET", "-e", "exit(IO::Socket::INET->new(PeerHost=>'localhost', PeerPort=>6333, Proto=>'tcp')?0:1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  hybrid-rag:
+    build: .
+    container_name: hybrid-rag-mcp
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      QDRANT_HOST: qdrant
+      HOST: 0.0.0.0
+      PORT: 8000
+      RETAIL_ARTICLES_CSV: /raw_data/d_articulos.csv
+      RETAIL_CATEGORIES_CSV: /raw_data/d_categorizacion_tbl.csv
+      CHUNKS_CACHE_FILE: /app/.cache/.ingest_chunks_cache.jsonl
+      INGEST_CHECKPOINT_FILE: /app/.cache/.ingest_checkpoint.json
+      VOCAB_FILE: /app/.cache/.ingest_vocab.json
+    volumes:
+      - /home/ubuntu/raw_data:/raw_data:ro
+      - model_cache:/hf_cache
+      - ingest_cache:/app/.cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-X", "POST",
+        "http://localhost:8000/mcp",
+        "-H", "Content-Type: application/json",
+        "-H", "Accept: application/json",
+        "-d", '{"jsonrpc":"2.0","method":"tools/list","id":1}']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  qdrant_data:
+  model_cache:
+  ingest_cache:

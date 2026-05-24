@@ -1,0 +1,1 @@
+"""Agnostic ingestion pipeline."""

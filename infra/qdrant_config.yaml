@@ -1,0 +1,34 @@
+# Qdrant Production Configuration — Cloud VPS Optimized
+# Target: Millions of vectors with constrained RAM via on-disk memmap + int8 quantization
+
+service:
+  max_request_size_mb: 32
+  max_workers: 0                    # Auto-detect CPU cores
+  http_port: 6333
+  grpc_port: 6334
+
+storage:
+  performance:
+    # Switch vector payloads to memory-mapped files once segment exceeds this size.
+    # 20 MB threshold aggressively offloads cold segments to disk while keeping
+    # hot working sets in page cache — ideal for VPS deployments.
+    memmap_threshold_kb: 20480
+    # Keep storage I/O buffers large enough to amortize syscalls without
+    # blowing up RSS on a small instance.
+    payload_indexing_threshold_kb: 10000
+    # Let Qdrant decide thread pool sizing based on available vCPUs.
+    max_search_threads: 0
+    max_optimization_threads: 0
+
+  optimizers:
+    # Vacuuming: reclaim deleted vector space periodically.
+    vacuum_min_vector_number: 1000
+    default_segment_number: 0         # Auto
+    flush_interval_sec: 5
+
+# HNSW index defaults for dense vectors — persist graph edges on disk
+# to keep RAM usage low when paired with memmap_threshold.
+hnsw:
+  on_disk: true
+  m: 16
+  ef_construct: 100
