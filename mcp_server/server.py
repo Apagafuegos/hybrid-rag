@@ -69,11 +69,17 @@ def _build_json_response(
         chunk = getattr(result, "chunk", result)
         relevance_score = getattr(result, "relevance_score", None)
         rrqf_score = getattr(result, "rrqf_score", None)
+        metadata = getattr(chunk, "metadata", None)
+        cust = getattr(metadata, "custom_attributes", {}) if metadata else {}
+
+        structured_content = {"text": getattr(chunk, "text_content", "")}
+        if cust:
+            structured_content.update(cust)
 
         entry: Dict[str, Any] = {
             "rank": i,
             "source_type": getattr(chunk, "source_type", ""),
-            "source_id": getattr(chunk, "source_id", ""),
+            "structured_content": structured_content,
         }
         if relevance_score is not None:
             entry["relevance_score"] = round(relevance_score, 4)
