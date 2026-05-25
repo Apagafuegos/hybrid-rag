@@ -32,7 +32,7 @@ ENV SENTENCE_TRANSFORMERS_HOME=/hf_cache
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -sf -X POST http://localhost:8000/mcp \
+    CMD curl -sf -X POST http://localhost:8000/hybrid-mcp-server/mcp \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -d '{"jsonrpc":"2.0","method":"tools/list","id":1}' \

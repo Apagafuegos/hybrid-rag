@@ -38,6 +38,7 @@ services:
       QDRANT_HOST: qdrant
       HOST: 0.0.0.0
       PORT: 8000
+      MCP_PATH: /hybrid-mcp-server/mcp
       RETAIL_ARTICLES_CSV: /raw_data/d_articulos.csv
       RETAIL_CATEGORIES_CSV: /raw_data/d_categorizacion_tbl.csv
       CHUNKS_CACHE_FILE: /app/.cache/.ingest_chunks_cache.jsonl
@@ -50,7 +51,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "-X", "POST",
-        "http://localhost:8000/mcp",
+        "http://localhost:8000/hybrid-mcp-server/mcp",
         "-H", "Content-Type: application/json",
         "-H", "Accept: application/json",
         "-d", '{"jsonrpc":"2.0","method":"tools/list","id":1}']
