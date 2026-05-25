@@ -23,8 +23,11 @@ services:
       start_period: 20s
 
   hybrid-rag:
-    image: hybrid-rag-mcp:latest
+    image: ghcr.io/apagafuegos/hybrid-rag-mcp:latest
     container_name: hybrid-rag-mcp
+    pull_policy: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       qdrant:
         condition: service_healthy
