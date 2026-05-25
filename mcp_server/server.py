@@ -279,10 +279,30 @@ async def _run_background_ingestion(
 
 
 if __name__ == "__main__":
+    import uvicorn
+    from mcp_server.auth import BearerTokenAuthMiddleware
+
     logger.info(
         "Starting hybrid-rag MCP server on %s:%d%s (transport=streamable-http)",
         HOST,
         PORT,
         MCP_PATH,
     )
-    mcp.run(transport="streamable-http")
+
+    starlette_app = mcp.streamable_http_app()
+    starlette_app.add_middleware(
+        BearerTokenAuthMiddleware,
+        exempt_paths={"/health"},
+    )
+
+    @starlette_app.route("/health", methods=["GET"])
+    async def health(request):
+        from starlette.responses import JSONResponse
+        return JSONResponse({"status": "ok"})
+
+    uvicorn.run(
+        starlette_app,
+        host=HOST,
+        port=PORT,
+        log_level=os.getenv("LOG_LEVEL", "INFO").lower(),
+    )
