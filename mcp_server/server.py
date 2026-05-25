@@ -295,10 +295,11 @@ if __name__ == "__main__":
         exempt_paths={"/health"},
     )
 
-    @starlette_app.route("/health", methods=["GET"])
-    async def health(request):
+    async def _health(request):
         from starlette.responses import JSONResponse
         return JSONResponse({"status": "ok"})
+
+    starlette_app.add_route("/health", _health, methods=["GET"])
 
     uvicorn.run(
         starlette_app,
