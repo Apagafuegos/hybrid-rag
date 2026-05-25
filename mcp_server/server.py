@@ -51,10 +51,9 @@ mcp = FastMCP(
     "hybrid-rag-engine",
     host=HOST,
     port=PORT,
-    streamable_http_path=MCP_PATH,
+    sse_path=MCP_PATH,
+    message_path=f"{MCP_PATH}/message",
     log_level=os.getenv("LOG_LEVEL", "INFO"),
-    stateless_http=True,
-    json_response=True,
     lifespan=lifespan,
 )
 
@@ -283,13 +282,13 @@ if __name__ == "__main__":
     from mcp_server.auth import BearerTokenAuthMiddleware
 
     logger.info(
-        "Starting hybrid-rag MCP server on %s:%d%s (transport=streamable-http)",
+        "Starting hybrid-rag MCP server on %s:%d%s (transport=sse)",
         HOST,
         PORT,
         MCP_PATH,
     )
 
-    starlette_app = mcp.streamable_http_app()
+    starlette_app = mcp.sse_app()
     starlette_app.add_middleware(
         BearerTokenAuthMiddleware,
         exempt_paths={"/health"},
