@@ -19,7 +19,7 @@ from retrieval.external_search import ExternalSearchPort
 from retrieval.fusion import reciprocal_rank_fusion
 from retrieval.local_search import LocalSearcher
 from retrieval.models import SearchResult
-from retrieval.reranker import CrossEncoderReranker
+from retrieval.reranker import ApiReranker
 
 logger = logging.getLogger(__name__)
 
@@ -31,25 +31,32 @@ class HybridSearchOrchestrator:
     """
     Stateless async controller that chains the full retrieval pipeline.
 
+    Pipeline stages:
+        1. Parallel dense + sparse Qdrant lookups
+        2. Live external context fetch
+        3. Reciprocal Rank Fusion (RRF) across all result lists
+        4. OpenRouter-hosted cross-encoder semantic reranking
+
     Lifecycle
     ---------
-    This class is designed to be created once and reused across many calls.
-    ``searcher``, ``external_provider``, and ``reranker`` are all injected
-    (or lazily defaulted) and must remain valid across calls.
+    Created once and reused across many calls.  ``searcher``, ``reranker``,
+    and ``external_provider`` are lazily defaulted and remain valid across
+    the orchestrator's lifetime.
     """
 
     def __init__(
         self,
         *,
         external_provider: Optional[ExternalSearchPort] = None,
-        reranker: Optional[CrossEncoderReranker] = None,
+        reranker: Optional[ApiReranker] = None,
         default_limit: int = 5,
         query_timeout: float = 30.0,
     ) -> None:
         self._external = external_provider
-        self._reranker = reranker or CrossEncoderReranker()
+        self._reranker = reranker or ApiReranker()
         self._default_limit = default_limit
         self._query_timeout = query_timeout
+        self._searcher: Optional[LocalSearcher] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -64,12 +71,6 @@ class HybridSearchOrchestrator:
     ) -> List[SearchResult]:
         """
         Execute the full hybrid retrieval pipeline for *query*.
-
-        Pipeline stages:
-            1. Parallel dense + sparse Qdrant lookups
-            2. Live external context fetch
-            3. Reciprocal Rank Fusion (RRF) across all result lists
-            4. Cross-encoder semantic reranking
 
         Parameters
         ----------
@@ -95,7 +96,7 @@ class HybridSearchOrchestrator:
         if not query.strip():
             raise ValueError("query must be a non-empty string")
 
-        searcher = LocalSearcher()
+        searcher = self._get_searcher()
         top_n = limit if limit else self._default_limit
 
         try:
@@ -140,10 +141,19 @@ class HybridSearchOrchestrator:
             raise RuntimeError(
                 f"Search pipeline failed: {type(exc).__name__}: {exc}"
             ) from exc
-        finally:
-            await searcher.close()
 
-    async def warmup(self) -> None:
-        logger.info("Warming up reranker model...")
-        await asyncio.to_thread(self._reranker._load_model)
-        logger.info("Warmup complete.")
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _get_searcher(self) -> LocalSearcher:
+        """Lazy-init and reuse a single LocalSearcher for this orchestrator."""
+        if self._searcher is None:
+            self._searcher = LocalSearcher()
+        return self._searcher
+
+    async def close(self) -> None:
+        """Release Qdrant connections held by the internal searcher."""
+        if self._searcher is not None:
+            await self._searcher.close()
+            self._searcher = None

@@ -44,19 +44,22 @@ services:
       CHUNKS_CACHE_FILE: /app/.cache/.ingest_chunks_cache.jsonl
       INGEST_CHECKPOINT_FILE: /app/.cache/.ingest_checkpoint.json
       VOCAB_FILE: /app/.cache/.ingest_vocab.json
+      LOG_LEVEL: WARNING
     volumes:
       - /home/ubuntu/raw_data:/raw_data:ro
-      - model_cache:/hf_cache
       - ingest_cache:/app/.cache
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 120s
       timeout: 5s
       retries: 3
       start_period: 15s
 
 volumes:
   qdrant_data:
-  model_cache:
   ingest_cache:

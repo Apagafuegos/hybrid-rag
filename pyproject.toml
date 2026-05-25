@@ -11,6 +11,4 @@ dependencies = [
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
     "qdrant-client>=1.18.0",
-    "sentence-transformers>=3.0.0",
-    "torch>=2.3.0",
 ]

@@ -559,6 +559,10 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "qdrant-client" },
+]
+
+[package.optional-dependencies]
+local = [
     { name = "sentence-transformers" },
     { name = "torch" },
 ]
@@ -571,9 +575,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "qdrant-client", specifier = ">=1.18.0" },
-    { name = "sentence-transformers", specifier = ">=3.0.0" },
-    { name = "torch", specifier = ">=2.3.0" },
+    { name = "sentence-transformers", marker = "extra == 'local'", specifier = ">=3.0.0" },
+    { name = "torch", marker = "extra == 'local'", specifier = ">=2.3.0" },
 ]
+provides-extras = ["local"]
 
 [[package]]
 name = "hyperframe"

@@ -30,12 +30,6 @@ def _get_orchestrator() -> HybridSearchOrchestrator:
     return _orchestrator
 
 
-async def _warmup_models() -> None:
-    logger.info("Pre-loading ML models (reranker + dense embedder)...")
-    orch = _get_orchestrator()
-    await orch.warmup()
-
-
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 MCP_PATH = os.getenv("MCP_PATH", "/mcp")
@@ -43,8 +37,10 @@ MCP_PATH = os.getenv("MCP_PATH", "/mcp")
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
-    await _warmup_models()
     yield
+    orch = _orchestrator
+    if orch is not None:
+        await orch.close()
 
 
 mcp = FastMCP(
@@ -273,9 +269,14 @@ async def _run_background_ingestion(
         await worker.close()
 
         logger.info("Background ingestion completed in %.1fs", time.monotonic() - t0)
+        import gc
+        gc.collect()
+        logger.debug("Garbage collection completed after background ingestion.")
     except Exception as exc:
         logger.exception("Background ingestion failed after %.1fs: %s",
                           time.monotonic() - t0, exc)
+        import gc
+        gc.collect()
 
 
 if __name__ == "__main__":
